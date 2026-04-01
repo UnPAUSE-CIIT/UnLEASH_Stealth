@@ -4,6 +4,7 @@
 // ============================================================================================
 
 using UnityEngine;
+using KBCore.Refs;
 
 [RequireComponent( typeof( CharacterController ) )]
 public class PlayerController : MonoBehaviour
@@ -11,7 +12,6 @@ public class PlayerController : MonoBehaviour
     [Header( "Movement Settings" )]
     [SerializeField] float _moveSpeed = 5f;
     [SerializeField] float _runSpeed = 8f;
-    [SerializeField] float _crouchSpeed = 2.5f;
 
     [Header( "Pickup Settings" )]
     [SerializeField] float _pickupRange = 2f;
@@ -21,16 +21,19 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float _hideRadius = 1.5f;
     [SerializeField] LayerMask _hideableLayer;
 
-    [SerializeField] CharacterController _characterController;
+    [Header( "Inventory" )]
+    [SerializeField, Self] Inventory _inventory;
+
+    [SerializeField, Self] CharacterController _characterController;
     [field: SerializeField] public bool IsHidden { get; private set; }
+    [SerializeField, Child] Animator _model;
 
-    PickupItem _currentPickup;
+    InventoryItem _currentPickup;
     Hideable _currentHideable;
-    bool _isCrouching;
 
-    void Awake()
+    void OnValidate()
     {
-        _characterController = GetComponent<CharacterController>();
+        this.ValidateRefs();
     }
 
     void Update()
@@ -42,56 +45,74 @@ public class PlayerController : MonoBehaviour
         }
 
         HandleMovement();
+		HandleAnimation();
         HandlePickup();
         HandleHide();
+        HandleUseItem();
     }
 
-    void HandleMovement()
+    void HandleUseItem()
     {
-        float horizontal = Input.GetAxis( "Horizontal" );
-        float vertical = Input.GetAxis( "Vertical" );
+        if ( _inventory == null ) return;
 
-        Vector3 direction = new Vector3( horizontal, 0f, vertical ).normalized;
+        float scroll = Input.mouseScrollDelta.y;
 
-        _isCrouching = Input.GetKey( KeyCode.LeftControl );
-
-        float speed = _isCrouching ? _crouchSpeed : ( Input.GetKey( KeyCode.LeftShift ) ? _runSpeed : _moveSpeed );
-
-        Vector3 moveDirection = transform.TransformDirection( direction ) * speed;
-
-        moveDirection.y = -9.81f;
-
-        _characterController.Move( moveDirection * Time.deltaTime );
-    }
-
-    void HandlePickup()
-    {
-        if ( Input.GetKeyDown( KeyCode.E ) )
+        if ( scroll > 0 )
         {
-            if ( _currentPickup != null )
-            {
-                _currentPickup.Pickup();
-                _currentPickup = null;
-            }
-            else
-            {
-                TryFindPickup();
-            }
+            _inventory.SelectNext();
+        }
+        else if ( scroll < 0 )
+        {
+            _inventory.SelectPrevious();
+        }
+
+        if ( Input.GetKeyDown( KeyCode.Q ) )
+        {
+            _inventory.UseSelected();
         }
     }
 
-    void TryFindPickup()
+	float GetSpeed()
+	{
+		return Input.GetKey( KeyCode.LeftShift ) ? _runSpeed : _moveSpeed;
+	}
+
+    void HandleMovement()
     {
-        Collider[] colliders = Physics.OverlapSphere( transform.position, _pickupRange, _pickupLayer );
+        float horizontal = Input.GetAxisRaw( "Horizontal" );
+        float vertical = Input.GetAxisRaw( "Vertical" );
 
-        if ( colliders.Length > 0 )
+        Vector3 direction = new Vector3( horizontal, 0f, vertical ).normalized;
+
+        Vector3 moveDirection = transform.TransformDirection( direction ) * GetSpeed();
+
+        _characterController.SimpleMove( moveDirection );
+
+		if ( direction.sqrMagnitude > 0 )
+			_model.transform.rotation = Quaternion.LookRotation( direction );
+    }
+
+	void HandleAnimation()
+	{
+		_model.SetFloat( "Speed", _characterController.velocity.magnitude / _runSpeed );
+	}
+
+    void HandlePickup()
+    {
+        if ( Input.GetKeyDown( KeyCode.E ) && _currentPickup != null )
         {
-            PickupItem pickup = colliders[0].GetComponent<PickupItem>();
+            InventoryItem item = _currentPickup.GetComponent<InventoryItem>();
 
-            if ( pickup != null )
+            if ( item != null )
             {
-                _currentPickup = pickup;
+                item.transform.SetParent( transform );
+                item.gameObject.SetActive( false );
+
+                _inventory.AddItem( item );
+                Debug.Log( $"Picked up: {item.ItemName}" );
             }
+
+            _currentPickup = null;
         }
     }
 
@@ -157,10 +178,9 @@ public class PlayerController : MonoBehaviour
     {
         if ( IsHidden ) return;
 
-        PickupItem pickup = other.GetComponent<PickupItem>();
-        if ( pickup != null )
+        if ( other.TryGetComponent<PickupItem>( out var pickup ) )
         {
-            _currentPickup = pickup;
+            _currentPickup = pickup.GetInventoryItem();
         }
 
         Hideable hideable = other.GetComponent<Hideable>();
@@ -182,4 +202,10 @@ public class PlayerController : MonoBehaviour
             _currentHideable = null;
         }
     }
+
+	void OnDrawGizmos()
+	{
+		Gizmos.color = Color.green;
+		Gizmos.DrawCube( transform.position, new Vector3( 1, 2, 1 ) );
+	}
 }

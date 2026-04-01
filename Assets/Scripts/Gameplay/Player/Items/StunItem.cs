@@ -14,27 +14,6 @@ public class StunItem : ThrowableItem
     public float StunDuration => _stunDuration;
     public float EffectRadius => _effectRadius;
 
-    public override void OnUse()
-    {
-        GameObject player = GameObject.FindGameObjectWithTag( "Player" );
-
-        if ( player == null ) return;
-
-        Vector3 throwPosition = player.transform.position + player.transform.forward * _throwRange;
-
-        GameObject stun = new GameObject( "StunGrenade" );
-        stun.transform.position = player.transform.position;
-
-        StunItem stunComponent = stun.AddComponent<StunItem>();
-        stunComponent._stunDuration = _stunDuration;
-        stunComponent._effectRadius = _effectRadius;
-        stunComponent.ItemName = ItemName;
-
-        stunComponent.Throw( throwPosition );
-
-        Debug.Log( $"Stun grenade thrown!" );
-    }
-
     protected override void OnImpact()
     {
         BaseEnemy[] enemies = FindObjectsOfType<BaseEnemy>();

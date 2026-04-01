@@ -14,27 +14,6 @@ public class LureItem : ThrowableItem
     public float DistractionRadius => _distractionRadius;
     public float Duration => _duration;
 
-    public override void OnUse()
-    {
-        GameObject player = GameObject.FindGameObjectWithTag( "Player" );
-
-        if ( player == null ) return;
-
-        Vector3 throwPosition = player.transform.position + player.transform.forward * _throwRange;
-
-        GameObject lure = new GameObject( "Lure" );
-        lure.transform.position = player.transform.position;
-
-        LureItem lureComponent = lure.AddComponent<LureItem>();
-        lureComponent._distractionRadius = _distractionRadius;
-        lureComponent._duration = _duration;
-        lureComponent.ItemName = ItemName;
-
-        lureComponent.Throw( throwPosition );
-
-        Debug.Log( $"Lure thrown!" );
-    }
-
     protected override void OnImpact()
     {
         BaseEnemy[] enemies = FindObjectsOfType<BaseEnemy>();

@@ -1,9 +1,11 @@
 // ============================================================================================
 // File: PatrolState.cs
-// Description: Use this to make the enemy patrol between waypoints. The enemy will automatically find child objects named "Waypoint".
+// Description: Use this to make the enemy patrol between waypoints. The enemy will automatically find waypoints in the scene named "Waypoint_[EnemyName]_X".
 // ============================================================================================
 
 using UnityEngine;
+using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 [CreateAssetMenu( menuName = "Enemy States/Patrol" )]
 public class PatrolState : EnemyState
@@ -23,32 +25,26 @@ public class PatrolState : EnemyState
         _waypoints = FindWaypoints( machine.transform );
     }
 
-    Transform[] FindWaypoints( Transform parent )
+    Transform[] FindWaypoints( Transform enemyTransform )
     {
-        Transform[] children = new Transform[parent.childCount];
-        int waypointCount = 0;
+        string waypointPrefix = $"Waypoint_{enemyTransform.name}";
+        List<Transform> waypoints = new List<Transform>();
 
-        for ( int i = 0; i < parent.childCount; i++ )
+        GameObject[] allObjects = SceneManager.GetActiveScene().GetRootGameObjects();
+
+        foreach ( GameObject obj in allObjects )
         {
-            Transform child = parent.GetChild( i );
-
-            if ( child.name.StartsWith( "Waypoint" ) )
+            if ( obj.name.StartsWith( waypointPrefix ) )
             {
-                children[waypointCount] = child;
-                waypointCount++;
+                waypoints.Add( obj.transform );
             }
         }
 
-        if ( waypointCount == 0 ) return null;
+        if ( waypoints.Count == 0 ) return null;
 
-        Transform[] result = new Transform[waypointCount];
+        waypoints.Sort( ( a, b ) => a.name.CompareTo( b.name ) );
 
-        for ( int i = 0; i < waypointCount; i++ )
-        {
-            result[i] = children[i];
-        }
-
-        return result;
+        return waypoints.ToArray();
     }
 
     public override void OnUpdate( EnemyStateMachine machine )

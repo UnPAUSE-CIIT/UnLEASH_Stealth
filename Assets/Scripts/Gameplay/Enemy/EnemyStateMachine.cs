@@ -3,6 +3,7 @@
 // Description: Use this to manage enemy states. Assign states in the inspector to configure enemy behavior.
 // ============================================================================================
 
+using KBCore.Refs;
 using UnityEngine;
 
 [RequireComponent( typeof( BaseEnemy ) )]
@@ -13,12 +14,17 @@ public class EnemyStateMachine : MonoBehaviour
     [SerializeField] EnemyState[] _states;
 
     [Header( "References" )]
-    [SerializeField] BaseEnemy _enemy;
+    [SerializeField, Self] BaseEnemy _enemy;
 
     [SerializeField] EnemyState _currentState;
 
     public BaseEnemy Enemy => _enemy;
     public EnemyState CurrentState => _currentState;
+
+    void OnValidate()
+    {
+        this.ValidateRefs();
+    }
 
     void Start()
     {

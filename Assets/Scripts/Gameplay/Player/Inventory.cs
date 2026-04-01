@@ -1,6 +1,6 @@
 // ============================================================================================
 // File: Inventory.cs
-// Description: Use this to give the player an inventory system. Handles picking up and using items.
+// Description: Use this to give the player an inventory. Scroll to select item, press Q to use.
 // ============================================================================================
 
 using UnityEngine;
@@ -8,49 +8,87 @@ using System.Collections.Generic;
 
 public class Inventory : MonoBehaviour
 {
-    [Header( "Inventory Settings" )]
     [SerializeField] int _maxSlots = 9;
+    [SerializeField] LayerMask _groundLayer;
 
     public List<InventoryItem> Items { get; private set; } = new();
-    public int MaxSlots => _maxSlots;
+    public int SelectedIndex { get; private set; }
 
     public bool AddItem( InventoryItem item )
     {
         if ( Items.Count >= _maxSlots )
         {
-            Debug.Log( "Inventory is full!" );
+            Debug.Log( "Inventory full!" );
             return false;
         }
 
         Items.Add( item );
-        Debug.Log( $"Added {item.ItemName} to inventory." );
         return true;
     }
 
-    public void RemoveItem( InventoryItem item )
+    public void SelectNext()
     {
-        if ( Items.Contains( item ) )
-        {
-            Items.Remove( item );
-            Debug.Log( $"Removed {item.ItemName} from inventory." );
-        }
+        if ( Items.Count == 0 ) return;
+        SelectedIndex = ( SelectedIndex + 1 ) % Items.Count;
     }
 
-    public void UseItem( int slotIndex )
+    public void SelectPrevious()
     {
-        if ( slotIndex < 0 || slotIndex >= Items.Count )
+        if ( Items.Count == 0 ) return;
+        SelectedIndex = ( SelectedIndex - 1 + Items.Count ) % Items.Count;
+    }
+
+    public InventoryItem GetSelectedItem()
+    {
+        if ( Items.Count == 0 || SelectedIndex >= Items.Count ) return null;
+        return Items[SelectedIndex];
+    }
+
+    public void UseSelected()
+    {
+        InventoryItem item = GetSelectedItem();
+        if ( item == null ) return;
+
+        ThrowableItem throwable = item as ThrowableItem;
+
+        if ( throwable != null )
         {
-            Debug.Log( "Invalid slot index." );
-            return;
+            Vector3 targetPos = GetMouseTargetPosition( throwable.ThrowRange );
+            targetPos.y = transform.position.y;
+
+            item.transform.SetParent( null );
+            item.transform.position = transform.position;
+            item.gameObject.SetActive( true );
+
+            throwable.Throw( targetPos );
+        }
+        else
+        {
+            item.transform.SetParent( null );
+            item.transform.position = transform.position + transform.forward * 2f;
+            item.transform.gameObject.SetActive( true );
+            item.OnUse();
         }
 
-        InventoryItem item = Items[slotIndex];
-        item.OnUse();
-        item.DecreaseQuantity();
+        item.Quantity--;
 
         if ( item.Quantity <= 0 )
         {
-            Items.RemoveAt( slotIndex );
+            Items.RemoveAt( SelectedIndex );
+            if ( SelectedIndex >= Items.Count ) SelectedIndex = Mathf.Max( 0, Items.Count - 1 );
         }
+    }
+
+    Vector3 GetMouseTargetPosition( float maxRange )
+    {
+        Ray ray = Camera.main.ScreenPointToRay( Input.mousePosition );
+        RaycastHit hit;
+
+        if ( Physics.Raycast( ray, out hit, maxRange, _groundLayer ) )
+        {
+            return hit.point;
+        }
+
+        return ray.GetPoint( maxRange );
     }
 }

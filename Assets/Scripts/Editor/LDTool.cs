@@ -10,8 +10,6 @@ using Unity.AI.Navigation;
 
 public class LDTool : EditorWindow
 {
-    bool _isWaypointEditing;
-
     [MenuItem( "Tools/LDTool" )]
     public static void ShowWindow()
     {
@@ -40,7 +38,7 @@ public class LDTool : EditorWindow
         selected.position = position;
     }
 
-    private void OnGUI()
+    void OnGUI()
     {
         EditorGUILayout.LabelField( "UnLEASH Helper", EditorStyles.boldLabel );
 
@@ -54,64 +52,35 @@ public class LDTool : EditorWindow
             BakeNavMesh();
         }
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField( "Waypoint Editor", EditorStyles.boldLabel );
-
-        _isWaypointEditing = EditorGUILayout.Toggle( "Edit Waypoints", _isWaypointEditing );
-
-        if ( _isWaypointEditing )
+        if ( GUILayout.Button( "Go to Main Camera" ) )
         {
-            EditorGUILayout.HelpBox( "Hold Shift and click in the Scene view to add waypoints as children of the selected enemy.", MessageType.Info );
+            GoToMainCamera();
         }
     }
 
-    void OnSceneGUI()
+    static void GoToMainCamera()
     {
-        if ( !_isWaypointEditing ) return;
+        Camera mainCamera = Camera.main;
 
-        if ( Selection.activeGameObject == null )
+        if ( mainCamera == null )
         {
+            Debug.LogWarning( "No Main Camera found in scene." );
             return;
         }
 
-        BaseEnemy enemy = Selection.activeGameObject.GetComponent<BaseEnemy>();
+        SceneView sceneView = SceneView.lastActiveSceneView;
 
-        if ( enemy == null )
+        if ( sceneView == null )
         {
+            Debug.LogWarning( "No Scene View found." );
             return;
         }
 
-        Event currentEvent = Event.current;
-
-        if ( currentEvent.type == EventType.MouseDown && currentEvent.button == 0 && currentEvent.shift )
-        {
-            Vector3 clickPoint = HandleUtility.GUIPointToWorldRay( currentEvent.mousePosition ).GetPoint( 10f );
-            clickPoint.y = Selection.activeTransform.position.y;
-
-            CreateWaypoint( clickPoint );
-            currentEvent.Use();
-        }
-    }
-
-    void CreateWaypoint( Vector3 position )
-    {
-        int waypointCount = 0;
-
-        for ( int i = 0; i < Selection.activeTransform.childCount; i++ )
-        {
-            if ( Selection.activeTransform.GetChild( i ).name.StartsWith( "Waypoint" ) )
-            {
-                waypointCount++;
-            }
-        }
-
-        GameObject waypoint = new GameObject( $"Waypoint_{waypointCount}" );
-        waypoint.transform.position = position;
-        waypoint.transform.parent = Selection.activeTransform;
-
-        Undo.RegisterCreatedObjectUndo( waypoint, "Create Waypoint" );
-
-        Debug.Log( $"Created waypoint at {position}" );
+		var trg = sceneView.camera;
+        sceneView.camera.transform.position = mainCamera.transform.position;
+        sceneView.camera.transform.rotation = mainCamera.transform.rotation;
+		sceneView.AlignViewToObject( trg.transform );
+        sceneView.Focus();
     }
 
     static void BakeNavMesh()

@@ -14,32 +14,8 @@ public class RemoteExplosiveItem : ThrowableItem
     public float BlastRadius => _blastRadius;
     public int Damage => _damage;
 
-    Vector3 _explosionPosition;
-
-    public override void OnUse()
-    {
-        GameObject player = GameObject.FindGameObjectWithTag( "Player" );
-
-        if ( player == null ) return;
-
-        Vector3 throwPosition = player.transform.position + player.transform.forward * _throwRange;
-
-        GameObject explosive = new GameObject( "RemoteExplosive" );
-        explosive.transform.position = player.transform.position;
-
-        RemoteExplosiveItem explosiveComponent = explosive.AddComponent<RemoteExplosiveItem>();
-        explosiveComponent._blastRadius = _blastRadius;
-        explosiveComponent._damage = _damage;
-        explosiveComponent.ItemName = ItemName;
-
-        explosiveComponent.Throw( throwPosition );
-
-        Debug.Log( $"Remote explosive placed! Press Q to detonate." );
-    }
-
     protected override void OnImpact()
     {
-        _explosionPosition = transform.position;
     }
 
     public void Detonate()
@@ -48,7 +24,7 @@ public class RemoteExplosiveItem : ThrowableItem
 
         foreach ( BaseEnemy enemy in enemies )
         {
-            float distance = Vector3.Distance( enemy.transform.position, _explosionPosition );
+            float distance = Vector3.Distance( enemy.transform.position, transform.position );
 
             if ( distance <= _blastRadius )
             {
